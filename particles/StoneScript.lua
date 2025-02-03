@@ -4,7 +4,7 @@ local Vector2 = require("Vector2Script")
 local stone = {}
 
 stone.__index = stone
-
+stone.name = "Stone"
 
 
 function stone.new(x, y, index)

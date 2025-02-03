@@ -5,6 +5,7 @@ local Color = require("ColorScript")
 local sand = {}
 
 sand.__index = sand
+sand.name = "Sand"
 
 
 

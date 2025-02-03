@@ -4,7 +4,7 @@ function love.conf(t)
     t.window.title = "Epic Program"
     t.window.resizeable = true
     t.window.borderless = false
-    t.window.width = 1440
-    t.window.height = 1080
+    t.window.width = 1800
+    t.window.height = 1200
 end
 

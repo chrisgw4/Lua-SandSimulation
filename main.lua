@@ -15,7 +15,8 @@ local Water = require("particles.WaterScript")
 local Stone = require("particles.StoneScript")
 -- End Particle Requires
 
-local Clamp = require("Clamp")
+local clamp = require("Clamp")
+local text = require("TextScript")
 local tick = require("tick")
 -- #endregion End of required Class Scripts --
 
@@ -23,7 +24,7 @@ local vec2 = vector2.new(1, 2)
 local x = 0
 local reverse = false
 
-SCALE = 5
+SCALE = 7
 WIDTH = love.graphics.getWidth()/SCALE
 HEIGHT = love.graphics.getHeight()/SCALE
 
@@ -53,8 +54,9 @@ particles[#particles+1] = sand1
 -- particles[#particles+1] = sand2
 particle_table[sand1.position.y][sand1.position.x] = sand1
 
-
+-- This variable keeps track of which particle is selected and what particle to spawn
 local selected_particle = Sand
+local available_particles = {Sand, Water, Stone} -- This variable keeps track of the particles that are able to be selected
 
 -- Sprite batch will hold onto the particle draw data and then draw them all at once in one call --
 local sprite_batch = love.graphics.newSpriteBatch(love.graphics.newImage("particle.png"), 1000, "dynamic")
@@ -63,7 +65,7 @@ local mouse_batch = love.graphics.newSpriteBatch(love.graphics.newImage("particl
 
 -- Caps the framerate to 60 fps
 function love.load(arg)
-  tick.framerate = 120000 -- Limit framerate to 60 frames per second.
+  tick.framerate = 9000 -- Limit framerate to 60 frames per second.
 end
 
 
@@ -84,14 +86,6 @@ local function preview_mouse(x, y)
         
         
     end
-
-
-    -- for i=0,4 do
-    --     for j=0,4 do
-    --         mouse_batch:setColor(1, 0.25, 0.25, 0.45)
-    --         mouse_batch:add((x+j)*SCALE, (y+i)*SCALE, 0, SCALE, SCALE, 0)
-    --     end
-    -- end
 end
 -- #endregion
 
@@ -136,6 +130,7 @@ function InBounds(y, x)
 end
 
 -- #region Will delete a clump of particles at the mouse position --
+
 local function delete_particle_mouse(x, y)
     local radius = size/2
     local to_be_deleted = {}
@@ -162,6 +157,9 @@ local function delete_particle_mouse(x, y)
 end
 -- #endregion
 
+
+
+
 -- #region Will spawn a clump of particles at the mouse position --
 local function spawn_particle(x, y, can_spawn)
     if not can_spawn then
@@ -179,6 +177,7 @@ local function spawn_particle(x, y, can_spawn)
                 if not IsSpaceOccupied(y+i, x+j) then
                     local temp = selected_particle.new(ClampWidth(x+j), ClampHeight(y+i))
                     particle_table[ClampHeight(y+i)][ClampWidth(x+j)] = temp
+
                     particles[#particles+1] = temp
                 end
             end
@@ -253,88 +252,101 @@ local frame_update = 0
 -- love.graphics.setBackgroundColor( 0.1411764705882353, 0.5333333333333333, 0.611764705882353, 0.5 )
 love.graphics.setBackgroundColor( 0.4235294117647059, 0.5882352941176471, 0.7294117647058823, 0.5 )
 
+
+
+-- Will sort the particles table periodically to ensure update works properly
+local particle_sort_timer = 60
+local particle_sort_clock = 0
+
+local function sortParticles() 
+    -- Sort the particles table after being sorted
+    table.sort(particles, function(a, b)
+        return a.position.y > b.position.y
+    end)
+end
+
+
+
 function love.update(dt)
 	
+
+    
+
+    -- Catches the event when the mouse button 2 is pressed --
+    if love.mouse.isDown(2) then
+        -- Calls the function to delete particles at the mouse location --
+        delete_particle_mouse(ClampWidth(love.mouse.getX()/SCALE),  ClampHeight(love.mouse.getY()/SCALE))
+    end
 
     -- Catches the event when the mouse button 1 is pressed --
     if love.mouse.isDown(1) then
         -- Calls the function to spawn particles at the mouse location --
         spawn_particle(ClampWidth(love.mouse.getX()/SCALE),  ClampHeight(love.mouse.getY()/SCALE), true)
+    end
 
-    -- Catches the event when the mouse button 2 is pressed --
-    elseif love.mouse.isDown(2) then
-        -- Calls the function to delete particles at the mouse location --
-        delete_particle_mouse(ClampWidth(love.mouse.getX()/SCALE),  ClampHeight(love.mouse.getY()/SCALE))
     -- If the scroll wheel is pressed down
-    elseif love.mouse.isDown(3) then
+    if love.mouse.isDown(3) then
         resetSize() -- Reset the spawning size back to its base value
     end
 
-    -- Chunk into 6, 2 vertical and 3 horizontal
-
-    -- Update the particles in chunks
-    -- for x = 1,32 do
-    --     for i = HEIGHT, 1, -1 do
-    --         for j = WIDTH/32, 1, -1 do
-    --             if IsSpaceOccupied(i,j+(WIDTH/32 * (x-1))) then
-    --                 particle_table[i][j+(WIDTH/32 * (x-1))]:Update(particle_table)
-    --             elseif IsSpaceOccupied(i,j) and x%2 == 1 then
-    --                 particle_table[i][j]:Update(particle_table)
-    --             end
-    --         end
-    --     end
+    
+    
+    -- particle_sort_clock = particle_sort_clock + 1
+    -- if particle_sort_clock >= particle_sort_timer then
+    --     particle_sort_clock = 0
+    --     -- sortParticles()
     -- end
-
-
-    -- if frame_update % 1 == 0 then
-    --     for i=1,#particle_table do
-    --         for j = 1, WIDTH do
-    --             if IsSpaceOccupied(i,j) then
-    --                 -- Checks to see if a particle has been overridden but is still taking processing power, and removes them if they're not found
-    --                 -- if particle_table[Clampf(particles[i].position.y, 1, HEIGHT)][particles[i].position.x] ~= particles[i] then
-    --                 --     particle_table:remove(particles[i])
-    --                 --     particles:remove(particles[i])
-    --                 -- end
-    --                 particle_table[i][j]:Update(particle_table)
-    --                 -- particles[i]:Update(particle_table)
-    --             end
-    --         end
-    --     end
-    --     frame_update = 0
-    -- end
-    -- frame_update = frame_update + 1
-    --if frame_update % 1 == 0 then
+    
+    local chunks = 4
     -- Updates each particle
-    for i=1,#particles do
-        particles[i]:Update(particle_table)
+    for x=0, chunks do
+        for j = (#particles/chunks)*(x+1), (#particles*x)/chunks, -1 do
+            particles[Clampf(j, 1, #particles)]:Update(particle_table)
+        end
     end
 
+    -- for i=#particles-1, 1, -1 do
+    --     particles[i]:Update(particle_table)
+    -- end
+    -- if not thread1:isRunning() then
+    --     thread1:start(WIDTH, particle_table)
+    -- end
+    -- thread1:wait()
+
+    -- particle_table = love.thread.getChannel("particles"):pop()
+    -- print(WIDTH)
+    -- local chunks_x = 60
+    -- frame_update = frame_update + 1
+    -- --if frame_update % math.floor(love.timer.getFPS()/200) == 0 then
+    --     frame_update = 0
+    --     for i=#particle_table, 1, -1 do
+    --         for chunk=0, chunks_x do
+                
+    --             if math.random(0,2) == 0 then
+    --                 for j = (WIDTH/chunks_x)*(chunk+1), (WIDTH*chunk)/chunks_x, -1 do
+    --                     if particle_table[i][j] ~= nil then
+    --                         particle_table[i][j]:Update(particle_table)
+    --                     end
+    --                 end
+    --             else
+    --                 for j = (WIDTH*chunk)/chunks_x, (WIDTH/chunks_x)*(chunk+1) do
+    --                     if particle_table[i][j] ~= nil then
+    --                         particle_table[i][j]:Update(particle_table)
+    --                     end
+    --                 end
+    --             end
+    --         end
+    --     end
+    -- end
     
     DeleteParticle(deletion_queue)
     
     deletion_queue = {}
-    -- for i=1,#particle_table do
-    --     for j = 1, #particle_table[i] do
-    --         if IsSpaceOccupied(i,j) then
-    --             -- Checks to see if a particle has been overridden but is still taking processing power, and removes them if they're not found
-    --             -- if particle_table[Clampf(particles[i].position.y, 1, HEIGHT)][particles[i].position.x] ~= particles[i] then
-    --             --     particle_table:remove(particles[i])
-    --             --     particles:remove(particles[i])
-    --             -- end
-    --             particle_table[i][j]:Update(particle_table)
-    --             --particles[i]:Update(particle_table)
-    --         end
 
-            
+    
 
-            
-    --     end
-
-            
-        -- end
-        --frame_update = 0
     --end
-    --frame_update = frame_update + 1
+    
 end
 
 
@@ -346,66 +358,38 @@ local c1 = love.thread.getChannel("particles")
 
 
 
--- -- Main Loop, Probably dont mess with this
--- function love.run()
--- 	if love.load then love.load(love.arg.parseGameArguments(arg), arg) end
+local orientation_changer = 2*math.pi-math.pi/4
+local text_table = {text.new(0,0), text.new(0,0), text.new(0,0)}
 
--- 	-- We don't want the first frame's dt to include time taken by love.load.
--- 	if love.timer then love.timer.step() end
+-- Prints the particle types and sees which one is active
+local function printParticleTypes(graphics, width)
 
--- 	local dt = 0
+    local font = graphics.getFont()
 
--- 	-- Main loop time.
--- 	return function()
--- 		-- Process events.
--- 		if love.event then
--- 			love.event.pump()
--- 			for name, a,b,c,d,e,f in love.event.poll() do
--- 				if name == "quit" then
--- 					if not love.quit or not love.quit() then
--- 						return a or 0
--- 					end
--- 				end
--- 				love.handlers[name](a,b,c,d,e,f)
--- 			end
--- 		end
+    orientation_changer = orientation_changer
+    
 
--- 		-- Update dt, as we'll be passing it to update
--- 		if love.timer then 
---             dt = love.timer.step() 
---         end
+    graphics.print("Selected Particle", 10, 250)
 
--- 		-- Call update and draw
--- 		if love.update then 
---             love.update(dt) 
+    
 
---             --if c1:peek() ~= nil then
-                
---             if not t:isRunning() then
---                 -- t:start(c1)
---                 -- c1:push(particles)
---                 -- c1:push(particle_table)
---             end
-            
-            
+    for i=1, #available_particles do
+        if selected_particle == available_particles[i] then
+            --local selected_particle_text = graphics.newText(font, {{1,0.2,0.2,1}, i..": "..selected_particle.name})
+            text_table[i].text = graphics.newText(font, {{1,0.2,0.2,1}, i..": "..selected_particle.name})
+            love.graphics.draw(text_table[i].text, 10,250+25*i, text_table[i].orientation, 1.2,1.2)
+        else
+            --local selected_particle_text = graphics.newText(font, {{1,1,1,1}, i..": ".. available_particles[i].name})
+            text_table[i].text = graphics.newText(font, {{1,1,1,1}, i..": ".. available_particles[i].name})
+            love.graphics.draw(text_table[i].text, 10,250+25*i, 0, 0.9, 0.9)
+        end
+    end
 
+    if orientation_changer >= math.pi/4 then
+        orientation_changer = 2*math.pi-math.pi/4
+    end
 
---         end -- will pass 0 if love.timer is disabled
-
--- 		if love.graphics and love.graphics.isActive() then
--- 			love.graphics.origin()
--- 			love.graphics.clear(love.graphics.getBackgroundColor())
-
--- 			if love.draw then 
---                 love.draw() 
---             end
-
--- 			love.graphics.present()
--- 		end
-
--- 		if love.timer then love.timer.sleep(0.001) end
--- 	end
--- end
+end
 
 
 function love.draw()
@@ -427,19 +411,33 @@ function love.draw()
     end
     -- #endregion
 
+    frame_draw = frame_draw + 1
     if frame_draw % math.floor(love.timer.getFPS()/30) == 0 then
+        
+
         -- #region Goes through all the particles that are created and updates them, and adds them to the draw call --
 
         sprite_batch:clear()
 
         -- Adds all the particles to the sprite batch to prepare for draw
-        for i=1,#particles do
+        for i=1, #particles do
             particles[i]:Draw(sprite_batch, particle_table)
         end
+        
+
+        -- for i=1, #particle_table do
+        --     for j=1, WIDTH do
+        --         if particle_table[i][j] ~= nil then
+        --             particle_table[i][j]:Draw(sprite_batch, particle_table)
+        --         end
+        --     end
+        -- end
+        
+
         -- endregion
         frame_draw = 0
     end
-    frame_draw = frame_draw + 1
+    
 
     -- Previews where the mouse is so you know where you will destroy or place particles --
     preview_mouse(Clampf(love.mouse.getX()/SCALE, 1, WIDTH)-1,  Clampf(love.mouse.getY()/SCALE, 1, HEIGHT))
@@ -448,6 +446,9 @@ function love.draw()
     -- Draws the entire Batch array in one call --
     love.graphics.draw(sprite_batch)
     love.graphics.draw(mouse_batch)
+
+    
+    printParticleTypes(love.graphics, love.graphics.getWidth())
 
 
     love.graphics.print(Clampf(love.mouse.getX()/SCALE, 1, WIDTH) .. ", " .. Clampf(love.mouse.getY()/SCALE, 1, HEIGHT), 100, 20)

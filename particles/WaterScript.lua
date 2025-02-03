@@ -8,7 +8,7 @@ local DissolveComponent = require("Components.DissolveComponent")
 local water = {}
 
 water.__index = water
-
+water.name = "Water"
 
 function water.new(x, y)
     local myClass = setmetatable({}, water)
@@ -21,7 +21,7 @@ function water.new(x, y)
     myClass.fluid_component = FluidComponent.new()
     myClass.displace_component = DisplacementComponent.new()
 
-    myClass.color = Color.new(0.7058823529411765, 0.8509803921568627, 0.9803921568627451, 0.85)
+    myClass.color = Color.new(0.20784313725490197, 0.43137254901960786, 0.6313725490196078, 0.85)
 
     -- Depth variable will contain which level of color the current water particle is associated with
     myClass.depth = 0
@@ -32,7 +32,8 @@ function water.new(x, y)
     myClass.previous_position = Vector2.new(x, y)
     
     -- Will allow the depth to be updated every so often
-    myClass.depthUpdateTimer = math.random(0, 3)
+    myClass.depthUpdateTimer = 4
+    myClass.depthUpdateClock = math.random(0, myClass.depthUpdateTimer)
 
     myClass.dissolve_component = DissolveComponent.new(1, 9950)
 
@@ -100,11 +101,11 @@ end
 -- This will change the color of the water dependent on how much is above it
 function water:changeColor(particle_table)
 
-    if self.depthUpdateTimer < 2 then
-        self.depthUpdateTimer = self.depthUpdateTimer + 1
+    if self.depthUpdateClock < self.depthUpdateTimer then
+        self.depthUpdateClock = self.depthUpdateClock + 1
         return
     end
-    self.depthUpdateTimer = 0
+    self.depthUpdateClock = 0
     
     
     -- self.depthCount = 0
