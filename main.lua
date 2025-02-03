@@ -24,7 +24,7 @@ local vec2 = vector2.new(1, 2)
 local x = 0
 local reverse = false
 
-SCALE = 7
+SCALE = 5
 WIDTH = love.graphics.getWidth()/SCALE
 HEIGHT = love.graphics.getHeight()/SCALE
 
@@ -65,7 +65,7 @@ local mouse_batch = love.graphics.newSpriteBatch(love.graphics.newImage("particl
 
 -- Caps the framerate to 60 fps
 function love.load(arg)
-  tick.framerate = 9000 -- Limit framerate to 60 frames per second.
+  tick.framerate = 12000 -- Limit framerate to 60 frames per second.
 end
 
 
@@ -147,7 +147,7 @@ local function delete_particle_mouse(x, y)
                     --particles:remove(particle_table[y+i][x+j])
 
                     -- Need to clampf for x because erasing the right side wont work without it
-                    particle_table[ClampHeight(y+i)][Clampf(x+j, 1, WIDTH+1)] = nil
+                    --particle_table[ClampHeight(y+i)][Clampf(x+j, 1, WIDTH+1)] = nil
                 end
             end   
         end
@@ -404,7 +404,7 @@ function love.draw()
     -- #endregion
 
     frame_draw = frame_draw + 1
-    if frame_draw % math.floor(love.timer.getFPS()/30) == 0 then
+    if frame_draw % math.ceil(love.timer.getFPS()/15) == 0 then
         
 
         -- #region Goes through all the particles that are created and updates them, and adds them to the draw call --

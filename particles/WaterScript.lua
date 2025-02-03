@@ -61,10 +61,12 @@ function water:Update(particle_table)
     --     self.previous_position.y = self.position.y
     -- end
     -- Checks if there is a particle beneath the current position
-    if particle_table[Clampf(self.position.y+1, 1, HEIGHT)][self.position.x] ~= nil then --and particle_table[Clampf(self.position.y+1, 1, WIDTH)][self.position.x].type ~= 0 then
+    
+    if IsSpaceOccupied(self.position.y+1, self.position.x) then--particle_table[Clampf(self.position.y+1, 1, HEIGHT)][self.position.x] ~= nil then --and particle_table[Clampf(self.position.y+1, 1, WIDTH)][self.position.x].type ~= 0 then
         
         -- Checks if there is a free space to either the right or the left of the particle
-        if particle_table[Clampf(self.position.y, 1, HEIGHT)][self.position.x+1] == nil or particle_table[Clampf(self.position.y, 1, HEIGHT)][self.position.x-1] == nil then
+        
+        if not IsSpaceOccupied(self.position.y, self.position.x+1) or not IsSpaceOccupied(self.position.y, self.position.x-1) then --particle_table[Clampf(self.position.y, 1, HEIGHT)][self.position.x+1] == nil or particle_table[Clampf(self.position.y, 1, HEIGHT)][self.position.x-1] == nil then
             -- Spreadout if there is space on either side
             self.position = self.fluid_component:SpreadOut(particle_table, self.position, self)
         end

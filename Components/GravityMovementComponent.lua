@@ -41,7 +41,6 @@ function gravity_component:FallDown(particle_table, position, parent)
     --     end
     -- end
 
-    local temp_position = Vector2.new(position.x, position.y)
     local max_fall = 0
     local max_fall_through = 0
     local pass_through_flag = false
