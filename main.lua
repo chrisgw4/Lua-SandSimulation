@@ -308,12 +308,6 @@ function love.update(dt)
     -- for i=#particles-1, 1, -1 do
     --     particles[i]:Update(particle_table)
     -- end
-    -- if not thread1:isRunning() then
-    --     thread1:start(WIDTH, particle_table)
-    -- end
-    -- thread1:wait()
-
-    -- particle_table = love.thread.getChannel("particles"):pop()
     -- print(WIDTH)
     -- local chunks_x = 60
     -- frame_update = frame_update + 1
@@ -350,9 +344,7 @@ function love.update(dt)
 end
 
 
--- Make Thread to update Particles
-local t = love.thread.newThread("ThreadUpdateParticles.lua")
-local c1 = love.thread.getChannel("particles")
+
 
 
 
