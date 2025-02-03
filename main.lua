@@ -299,15 +299,15 @@ function love.update(dt)
     
     local chunks = 4
     -- Updates each particle
-    for x=0, chunks do
-        for j = (#particles/chunks)*(x+1), (#particles*x)/chunks, -1 do
-            particles[Clampf(j, 1, #particles)]:Update(particle_table)
-        end
-    end
-
-    -- for i=#particles-1, 1, -1 do
-    --     particles[i]:Update(particle_table)
+    -- for x=0, chunks do
+    --     for j = (#particles/chunks)*(x+1), (#particles*x)/chunks, -1 do
+    --         particles[Clampf(j, 1, #particles)]:Update(particle_table)
+    --     end
     -- end
+
+    for i=#particles, 1, -1 do
+        particles[i]:Update(particle_table)
+    end
     -- print(WIDTH)
     -- local chunks_x = 60
     -- frame_update = frame_update + 1
@@ -415,6 +415,8 @@ function love.draw()
         for i=1, #particles do
             particles[i]:Draw(sprite_batch, particle_table)
         end
+
+        
         
 
         -- for i=1, #particle_table do
