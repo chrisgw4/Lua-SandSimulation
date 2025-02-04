@@ -13,6 +13,7 @@ local vector2 = require("Vector2Script")
 local Sand = require("particles.SandScript")
 local Water = require("particles.WaterScript")
 local Stone = require("particles.StoneScript")
+local Acid = require("particles.AcidScript")
 -- End Particle Requires
 
 local clamp = require("Clamp")
@@ -24,7 +25,7 @@ local vec2 = vector2.new(1, 2)
 local x = 0
 local reverse = false
 
-SCALE = 5
+SCALE = 6
 WIDTH = love.graphics.getWidth()/SCALE
 HEIGHT = love.graphics.getHeight()/SCALE
 
@@ -56,16 +57,21 @@ particle_table[sand1.position.y][sand1.position.x] = sand1
 
 -- This variable keeps track of which particle is selected and what particle to spawn
 local selected_particle = Sand
-local available_particles = {Sand, Water, Stone} -- This variable keeps track of the particles that are able to be selected
+local available_particles = {Sand, Water, Stone, Acid} -- This variable keeps track of the particles that are able to be selected
 
 -- Sprite batch will hold onto the particle draw data and then draw them all at once in one call --
 local sprite_batch = love.graphics.newSpriteBatch(love.graphics.newImage("particle.png"), 1000, "dynamic")
+local sprite_batch1 = love.graphics.newSpriteBatch(love.graphics.newImage("particle.png"), 1000, "dynamic")
+local sprite_batch2 = love.graphics.newSpriteBatch(love.graphics.newImage("particle.png"), 1000, "dynamic")
+local sprite_batch3 = love.graphics.newSpriteBatch(love.graphics.newImage("particle.png"), 1000, "dynamic")
+local sprite_batch4 = love.graphics.newSpriteBatch(love.graphics.newImage("particle.png"), 1000, "dynamic")
+local sprite_batch_arr = {sprite_batch1, sprite_batch2, sprite_batch3, sprite_batch4}
 local mouse_batch = love.graphics.newSpriteBatch(love.graphics.newImage("particle.png"), 1000, "dynamic")
 
 
 -- Caps the framerate to 60 fps
 function love.load(arg)
-  tick.framerate = 12000 -- Limit framerate to 60 frames per second.
+  tick.framerate = 6000 -- Limit framerate to 60 frames per second.
 end
 
 
@@ -240,6 +246,8 @@ function love.keypressed(key, scancode, isrepeat)
         selected_particle = Water
     elseif key == "3" then
         selected_particle = Stone
+    elseif key == "4" then
+        selected_particle = Acid
     end
  end
 
@@ -304,10 +312,19 @@ function love.update(dt)
     --         particles[Clampf(j, 1, #particles)]:Update(particle_table)
     --     end
     -- end
-
+    
     for i=#particles, 1, -1 do
         particles[i]:Update(particle_table)
     end
+
+    -- for i=1, #particles do
+    --     particles[i]:Update(particle_table)
+    -- end
+
+    -- for key, temp in pairs(particles) do
+    --     temp:Update(particle_table)
+    -- end
+
     -- print(WIDTH)
     -- local chunks_x = 60
     -- frame_update = frame_update + 1
@@ -333,9 +350,7 @@ function love.update(dt)
     --     end
     -- end
     
-    DeleteParticle(deletion_queue)
     
-    deletion_queue = {}
 
     
 
@@ -351,7 +366,7 @@ end
 
 
 local orientation_changer = 2*math.pi-math.pi/4
-local text_table = {text.new(0,0), text.new(0,0), text.new(0,0)}
+local text_table = {text.new(0,0), text.new(0,0), text.new(0,0), text.new(0,0)}
 
 -- Prints the particle types and sees which one is active
 local function printParticleTypes(graphics, width)
@@ -404,18 +419,37 @@ function love.draw()
     -- #endregion
 
     frame_draw = frame_draw + 1
-    if frame_draw % math.ceil(love.timer.getFPS()/15) == 0 then
+    if frame_draw % math.ceil(love.timer.getFPS()/20) == 0 then
+
+
+        -- Delete all the particles in the deletion queue before drawing the particles
+        DeleteParticle(deletion_queue)
+    
+        deletion_queue = {}
         
 
         -- #region Goes through all the particles that are created and updates them, and adds them to the draw call --
 
         sprite_batch:clear()
+        -- sprite_batch1:clear()
+        -- sprite_batch2:clear()
+        -- sprite_batch3:clear()
+        -- sprite_batch4:clear()
 
         -- Adds all the particles to the sprite batch to prepare for draw
         for i=1, #particles do
             particles[i]:Draw(sprite_batch, particle_table)
         end
 
+        -- local chunks = 4
+        -- -- Updates each particle
+        -- for x=0, chunks-1 do
+        --     for j = (#particles/chunks)*(x+1), (#particles*x)/chunks, -1 do
+        --         particles[Clampf(j, 1, #particles)]:Draw(sprite_batch_arr[x+1], particle_table)
+        --     end
+            
+        -- end
+        
         
         
 
@@ -431,6 +465,10 @@ function love.draw()
         -- endregion
         frame_draw = 0
     end
+
+    -- for i=1, #sprite_batch_arr-1 do
+    --     love.graphics.draw(sprite_batch_arr[i])
+    -- end
     
 
     -- Previews where the mouse is so you know where you will destroy or place particles --

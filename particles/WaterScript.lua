@@ -17,8 +17,8 @@ function water.new(x, y)
     myClass.velocity = 1
     myClass.type = 2
 
-    myClass.grav_component = GravityComponent.new(false)
-    myClass.fluid_component = FluidComponent.new()
+    myClass.grav_component = GravityComponent.new(false, {})
+    myClass.fluid_component = FluidComponent.new({})
     myClass.displace_component = DisplacementComponent.new()
 
     myClass.color = Color.new(0.20784313725490197, 0.43137254901960786, 0.6313725490196078, 0.85)
@@ -32,7 +32,7 @@ function water.new(x, y)
     myClass.previous_position = Vector2.new(x, y)
     
     -- Will allow the depth to be updated every so often
-    myClass.depthUpdateTimer = 4
+    myClass.depthUpdateTimer = 2
     myClass.depthUpdateClock = math.random(0, myClass.depthUpdateTimer)
 
     myClass.dissolve_component = DissolveComponent.new(1, 9950)
@@ -113,12 +113,13 @@ function water:changeColor(particle_table)
     -- self.depthCount = 0
     -- If the space above is not occupied
     if IsSpaceOccupied(self.position.y-1, self.position.x) == false then
-        self.depthCount = 0 -- You are the top most water particle
+        -- self.depthCount = 0 -- You are the top most water particle
+        self.depthCount = Clampf(self.depthCount-1, 0, 220)
         self.depth = 0
     -- Check if the particle above is a water particle
     elseif self.position.y-1 > 0 and particle_table[self.position.y-1][self.position.x].type == 2 then
-        self.depthCount = particle_table[self.position.y-1][self.position.x].depthCount + 1
-    
+        -- self.depthCount = particle_table[self.position.y-1][self.position.x].depthCount + 1
+        self.depthCount = Clampf(self.depthCount+1, 0, particle_table[self.position.y-1][self.position.x].depthCount + 1)
     -- If the particle above the water particles is not a water particle
     -- elseif self.position.y-1 > 0 and particle_table[self.position.y-1][self.position.x].type ~= 2 then
 

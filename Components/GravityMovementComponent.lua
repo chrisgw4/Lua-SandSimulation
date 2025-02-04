@@ -5,13 +5,25 @@ local gravity_component = {}
 gravity_component.__index = gravity_component
 
 
-function gravity_component.new(pass_through_water)
+function gravity_component.new(pass_through_water, pass_through_types)
     local myClass = setmetatable({}, gravity_component)
 
+    myClass.pass_through_types = pass_through_types
     myClass.velocity = 1
-    myClass.pass_through_water = pass_through_water
+    
     return myClass
 end
+
+
+function gravity_component:canPassThroughType(type)
+   for i=1, #self.pass_through_types do
+        if self.pass_through_types[i] == type then
+            return true
+        end
+   end 
+   return false
+end
+
 
 function gravity_component:FallDown(particle_table, position, parent)
     -- Check how far the particle can fall with its velocity before hitting something
@@ -49,7 +61,7 @@ function gravity_component:FallDown(particle_table, position, parent)
         if InBounds(position.y+i, position.x) and IsSpaceOccupied(position.y+i, position.x) == false then
             max_fall = i -- store the farthest fall the particle can go
             pass_through_flag = false
-        elseif InBounds(position.y+i, position.x) and IsSpaceOccupied(position.y+i, position.x) == true and particle_table[position.y+i][position.x].type == 2 and self.pass_through_water then
+        elseif InBounds(position.y+i, position.x) and IsSpaceOccupied(position.y+i, position.x) == true and self:canPassThroughType(particle_table[position.y+i][position.x].type) then
             max_fall_through = i
             pass_through_flag = true
         else
