@@ -15,7 +15,9 @@ function stone.new(x, y, index)
 
     myClass.color = Clamp(math.random(), 0.4196078431372549, 0.4396078431372549)
     
-
+    myClass.SCALE = SCALE
+    
+    myClass.density = 1000
 
     return myClass 
 end
@@ -25,13 +27,13 @@ function stone:getPosition()
 end
 
 function stone:Update(particle_table)
-
+    return
 end
 
 function stone:Draw(batch, graphics)
     batch:setColor(self.color, self.color, self.color)
     --batch:setColor(0.5294117647058824, 0.5294117647058824, 0.5294117647058824)
-    batch:add((self.position.x-1)*SCALE, (self.position.y)*SCALE, 0, SCALE, SCALE, 0)
+    batch:add((self.position.x-1)*self.SCALE, (self.position.y)*self.SCALE, 0, self.SCALE, self.SCALE, 0)
 end
 
 

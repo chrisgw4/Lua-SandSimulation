@@ -17,7 +17,10 @@ function water.new(x, y)
     myClass.velocity = 1
     myClass.type = 2
 
-    myClass.grav_component = GravityComponent.new(false, {})
+    -- Water's Density is 0, as it is the basis of density here
+    myClass.density = 0
+
+    myClass.grav_component = GravityComponent.new(false, {}, myClass.density)
     myClass.fluid_component = FluidComponent.new({})
     myClass.displace_component = DisplacementComponent.new()
 
@@ -35,7 +38,13 @@ function water.new(x, y)
     myClass.depthUpdateTimer = 2
     myClass.depthUpdateClock = math.random(0, myClass.depthUpdateTimer)
 
-    myClass.dissolve_component = DissolveComponent.new(1, 9950)
+    myClass.dissolve_component = DissolveComponent.new(1, 0.0015)
+
+    -- Make local variable of global to reduce processing global lookup
+    myClass.SCALE = SCALE
+    myClass.HEIGHT = HEIGHT
+    myClass.WIDTH = WIDTH
+    myClass.Clampf = Clampf
 
     return myClass
 end
@@ -61,23 +70,28 @@ function water:Update(particle_table)
     --     self.previous_position.y = self.position.y
     -- end
     -- Checks if there is a particle beneath the current position
-    
-    if IsSpaceOccupied(self.position.y+1, self.position.x) then--particle_table[Clampf(self.position.y+1, 1, HEIGHT)][self.position.x] ~= nil then --and particle_table[Clampf(self.position.y+1, 1, WIDTH)][self.position.x].type ~= 0 then
-        
-        -- Checks if there is a free space to either the right or the left of the particle
-        
-        if not IsSpaceOccupied(self.position.y, self.position.x+1) or not IsSpaceOccupied(self.position.y, self.position.x-1) then --particle_table[Clampf(self.position.y, 1, HEIGHT)][self.position.x+1] == nil or particle_table[Clampf(self.position.y, 1, HEIGHT)][self.position.x-1] == nil then
-            -- Spreadout if there is space on either side
+    if self.position.y+1 < self.HEIGHT then
+        if particle_table[self.position.y+1][self.position.x] ~= nil and particle_table[self.position.y+1][self.position.x].density >= self.density then
             self.position = self.fluid_component:SpreadOut(particle_table, self.position, self)
         end
-        self.velocity = 1
+    end
+
+    -- if self.position.y+1 < self.HEIGHT and particle_table[self.position.y+1][self.position.x] ~= nil then --IsSpaceOccupied(self.position.y+1, self.position.x) then--particle_table[Clampf(self.position.y+1, 1, HEIGHT)][self.position.x] ~= nil then --and particle_table[Clampf(self.position.y+1, 1, WIDTH)][self.position.x].type ~= 0 then
+        
+    --     -- Checks if there is a free space to either the right or the left of the particle
+        
+    --     if (self.position.x+1 < self.WIDTH and particle_table[self.position.y][self.position.x+1] == nil) or (self.position.x-1 > 0 and particle_table[self.position.y][self.position.x-1] == nil) then --particle_table[Clampf(self.position.y, 1, HEIGHT)][self.position.x+1] == nil or particle_table[Clampf(self.position.y, 1, HEIGHT)][self.position.x-1] == nil then
+    --         -- Spreadout if there is space on either side
+    --         self.position = self.fluid_component:SpreadOut(particle_table, self.position, self)
+    --     end
+    --     self.velocity = 1
 
     -- Checks to see if there is no particle beneath the current position
-    else -- particle_table[Clampf(self.position.y+1, 1, WIDTH)][self.position.x] == nil then
+    -- else -- particle_table[Clampf(self.position.y+1, 1, WIDTH)][self.position.x] == nil then
         -- Follows gravity to fall
         self.position = self.grav_component:FallDown(particle_table, self.position, self)
     
-    end
+    -- end
 
     self.dissolve_component:Dissolve(particle_table, self.position)
 
@@ -109,38 +123,15 @@ function water:changeColor(particle_table)
     end
     self.depthUpdateClock = 0
     
-    
-    -- self.depthCount = 0
-    -- If the space above is not occupied
-    if IsSpaceOccupied(self.position.y-1, self.position.x) == false then
-        -- self.depthCount = 0 -- You are the top most water particle
-        self.depthCount = Clampf(self.depthCount-1, 0, 220)
-        self.depth = 0
+    if self.position.y-1 <= 0 then
+        return
+    end
+
+    if self.position.y-1 > 0 and (particle_table[self.position.y-1][self.position.x] == nil or (particle_table[self.position.y-1][self.position.x] ~= nil and particle_table[self.position.y-1][self.position.x].density < self.density )) then
+        self.depthCount = self.Clampf(self.depthCount-1, 0, 220)
     -- Check if the particle above is a water particle
-    elseif self.position.y-1 > 0 and particle_table[self.position.y-1][self.position.x].type == 2 then
-        -- self.depthCount = particle_table[self.position.y-1][self.position.x].depthCount + 1
-        self.depthCount = Clampf(self.depthCount+1, 0, particle_table[self.position.y-1][self.position.x].depthCount + 1)
-    -- If the particle above the water particles is not a water particle
-    -- elseif self.position.y-1 > 0 and particle_table[self.position.y-1][self.position.x].type ~= 2 then
-
-
-
-        -- Check the particle to the right and copy its depthcount
-        -- if self.position.x+1 < WIDTH and IsSpaceOccupied(self.position.y, self.position.x+1) and particle_table[self.position.y][self.position.x+1].type == 2 then
-        --     self.depthCount = particle_table[self.position.y][self.position.x+1].depthCount
-        -- end
-        -- -- Check the particle to the left and copy its depthcount if its greater
-        -- if self.position.x-1 > 0 and IsSpaceOccupied(self.position.y, self.position.x-1) and particle_table[self.position.y][self.position.x-1].type == 2 then
-        --     if self.depthCount < particle_table[self.position.y][self.position.x-1].depthCount then
-        --         self.depthCount = particle_table[self.position.y][self.position.x-1].depthCount
-        --     end
-        -- end
-        -- if self.position.y+1 < HEIGHT and IsSpaceOccupied(self.position.y+1, self.position.x) and particle_table[self.position.y+1][self.position.x].type == 2 and self.depthCount == 0 then
-        --     if self.depthCount < particle_table[self.position.y+1][self.position.x].depthCount then
-        --         self.depthCount = particle_table[self.position.y+1][self.position.x].depthCount
-        --     end
-        -- end
-        
+    elseif self.position.y-1 > 0 and particle_table[self.position.y-1][self.position.x].type == self.type then
+        self.depthCount = self.Clampf(self.depthCount+1, 0, particle_table[self.position.y-1][self.position.x].depthCount + 1)
     end
 
     -- Determine color based on the depthCount
@@ -223,7 +214,7 @@ function water:Draw(batch, particle_table)
     --batch:setColor(0, 0, 0.49411764705882355, 0.85)
     self:changeColor(particle_table)
     batch:setColor(self.color.r, self.color.g, self.color.b, self.color.a)
-    batch:add((self.position.x-1)*SCALE, self.position.y*SCALE, 0, SCALE, SCALE, 0)
+    batch:add((self.position.x-1)*self.SCALE, self.position.y*self.SCALE, 0, self.SCALE, self.SCALE, 0)
 end
 
 return water

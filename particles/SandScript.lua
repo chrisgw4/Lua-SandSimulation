@@ -2,6 +2,10 @@ local Vector2 = require("Vector2Script")
 local GravityComponent = require("Components.GravityMovementComponent")
 local Color = require("ColorScript")
 
+
+
+
+
 local sand = {}
 
 sand.__index = sand
@@ -16,7 +20,15 @@ function sand.new(x, y, index)
     myClass.velocity = 1
     myClass.type = 1
 
-    myClass.grav_component = GravityComponent.new(true, {2, 4})
+    -- Store globals as a local variable to reduce global look up time
+    myClass.HEIGHT = HEIGHT
+    myClass.WIDTH = WIDTH
+    myClass.SCALE = SCALE
+    myClass.Clampf = Clampf
+
+    -- Sand is density 10, since it should sink in liquids
+    myClass.density = 10
+    myClass.grav_component = GravityComponent.new(true, {2, 4}, myClass.density)
 
     -- The wetness counter keeps track of how wet the sand particle is and what color it should be
     myClass.wetness = 0
@@ -29,6 +41,8 @@ function sand.new(x, y, index)
     myClass.wet_update_timer = 20 -- Keeps track of how long it takes to update wetness
     myClass.wet_update_counter = math.random(0, myClass.wet_update_timer) -- Will count each changeColor call in order to update wetness and reduce process load
 
+    -- Store function as a local variable to reduce global look up time
+    myClass.Max = math.max
 
 
     -- Color keeps track of the color the sand should be based on its wetness
@@ -43,79 +57,86 @@ end
 
 
 function sand:FallLeft(particle_table)
+    -- Check if either is out of bounds so we can return early
+    if self.position.y + 1 >= self.HEIGHT or self.position.x-1 <= 0 then
+        return 
+    end
+
+    local temp = particle_table[self.position.y+1][self.position.x-1]
     -- Check if left side is open, then we fall
-    -- if particle_table[self.position.y][Clampf(self.position.x-1, 1, WIDTH)] == nil or particle_table[self.position.y][Clampf(self.position.x-1, 1, WIDTH)].type == 2 then
-        -- Check left and down one
-        if particle_table[Clampf(self.position.y+1, 1, HEIGHT)][Clampf(self.position.x-1, 1, WIDTH)] == nil or particle_table[Clampf(self.position.y+1, 1, HEIGHT)][Clampf(self.position.x-1, 1, WIDTH)].type == 2 then
-            
-            -- Set the previous point the sand was at to 0
-            particle_table[self.position.y][self.position.x] = nil
-            
-            if particle_table[Clampf(self.position.y+1, 1, HEIGHT)][Clampf(self.position.x-1, 1, WIDTH)] ~= nil then
-                particle_table[self.position.y][self.position.x] = particle_table[Clampf(self.position.y+1, 1, HEIGHT)][Clampf(self.position.x-1, 1, WIDTH)]
-                particle_table[Clampf(self.position.y+1, 1, HEIGHT)][Clampf(self.position.x-1, 1, WIDTH)].position.x = self.position.x
-                particle_table[Clampf(self.position.y+1, 1, HEIGHT)][Clampf(self.position.x-1, 1, WIDTH)].position.y = self.position.y
-
-                -- AddToDeleteQueue(particle_table[Clampf(self.position.y+1, 1, HEIGHT)][Clampf(self.position.x-1, 1, WIDTH)])
-            end
-            
-            
-
-            -- Increment the current position
-            self.position.y = Clampf(self.position.y + 1, 1, HEIGHT)
-            self.position.x = Clampf(self.position.x - 1, 1, WIDTH)
-            
-
-            -- Set the new point the sand is at to 1 (occupied)
-            particle_table[self.position.y][self.position.x] = self
+    
+    -- Check left and down one
+    if temp == nil or temp.type == 2 then
+        
+        -- Set the previous point the sand was at to 0
+        particle_table[self.position.y][self.position.x] = nil
+        
+        if temp ~= nil then
+            particle_table[self.position.y][self.position.x] = temp
+            temp.position.x = self.position.x
+            temp.position.y = self.position.y
         end
-    -- end
+        
+
+        -- Increment the current position
+        self.position.y = self.position.y + 1
+        self.position.x = self.position.x - 1
+        
+
+        -- Set the new point the sand is at to self (occupied)
+        particle_table[self.position.y][self.position.x] = self
+    end
+
 end
 
 function sand:FallRight(particle_table)
-    -- Check if right side is open, then we fall
-    -- if particle_table[self.position.y][Clampf(self.position.x+1, 1, WIDTH)] == nil or particle_table[self.position.y][Clampf(self.position.x+1, 1, WIDTH)].type == 2 then
-        -- Check right and down one
-        if particle_table[Clampf(self.position.y+1, 1, WIDTH)][Clampf(self.position.x+1, 1, WIDTH)] == nil or particle_table[Clampf(self.position.y+1, 1, WIDTH)][Clampf(self.position.x+1, 1, WIDTH)].type == 2 then
-            
-            -- Set the previous point the sand was at to 0
-            particle_table[self.position.y][self.position.x] = nil
-            
-            if particle_table[Clampf(self.position.y+1, 1, WIDTH)][Clampf(self.position.x+1, 1, WIDTH)] ~= nil then
-                particle_table[self.position.y][self.position.x] = particle_table[Clampf(self.position.y+1, 1, WIDTH)][Clampf(self.position.x+1, 1, WIDTH)]
-                particle_table[Clampf(self.position.y+1, 1, WIDTH)][Clampf(self.position.x+1, 1, WIDTH)].position.x = self.position.x
-                particle_table[Clampf(self.position.y+1, 1, WIDTH)][Clampf(self.position.x+1, 1, WIDTH)].position.y = self.position.y
-                -- AddToDeleteQueue(particle_table[Clampf(self.position.y+1, 1, WIDTH)][Clampf(self.position.x+1, 1, WIDTH)])
-            end
-            
-            
-
-            -- Increment the current position
-            self.position.y = Clampf(self.position.y + 1, 1, HEIGHT)
-            self.position.x = Clampf(self.position.x + 1, 1, WIDTH)
-
-            -- Set the new point the sand is at to 1 (occupied)
-            particle_table[self.position.y][self.position.x] = self
+    -- Check if either is out of bounds so we can return early
+    if self.position.y + 1 >= self.HEIGHT or self.position.x+1 > self.WIDTH then
+        return 
+    end
+    
+    local temp = particle_table[self.position.y+1][self.position.x+1]
+    -- Check if left side is open, then we fall
+    
+    -- Check left and down one
+    if temp == nil or temp.type == 2 then
+        
+        -- Set the previous point the sand was at to 0
+        particle_table[self.position.y][self.position.x] = nil
+        
+        if temp ~= nil then
+            particle_table[self.position.y][self.position.x] = temp
+            temp.position.x = self.position.x
+            temp.position.y = self.position.y
         end
-    -- end
+
+
+        -- Increment the current position
+        self.position.y = self.position.y + 1
+        self.position.x = self.position.x + 1
+        
+
+        -- Set the new point the sand is at to self (occupied)
+        particle_table[self.position.y][self.position.x] = self
+    end
 end
 
 function sand:FallToSide(particle_table)
     
     -- if there are not any particles to the left and right of current particle, we can fall to both sides
-    if particle_table[self.position.y][Clampf(self.position.x-1, 1, WIDTH)] == nil and particle_table[self.position.y][Clampf(self.position.x+1, 1, WIDTH)] == nil then
+    if particle_table[self.position.y][self.Clampf(self.position.x-1, 1, self.WIDTH)] == nil and particle_table[self.position.y][self.Clampf(self.position.x+1, 1, self.WIDTH)] == nil then
         -- Use a random variable to help split the falling to both sides evenly
-        local val = Clampf(math.random(0, 2)+0.5, 0, 1)
+        local val = self.Clampf(math.random(0, 2)+0.5, 0, 1)
         if val == 0 then
             self:FallLeft(particle_table)
         else
             self:FallRight(particle_table)
         end
-    --elseif particle_table[self.position.y][Clampf(self.position.x-1, 1, WIDTH)] ~= nil and particle_table[self.position.y][Clampf(self.position.x+1, 1, WIDTH)] ~= nil then
+    --elseif particle_table[self.position.y][self.Clampf(self.position.x-1, 1, self.WIDTH)] ~= nil and particle_table[self.position.y][self.Clampf(self.position.x+1, 1, self.WIDTH)] ~= nil then
 
-    elseif particle_table[self.position.y][Clampf(self.position.x-1, 1, WIDTH)] == nil or particle_table[self.position.y][Clampf(self.position.x-1, 1, WIDTH)].type == 2 then
+    elseif particle_table[self.position.y][self.Clampf(self.position.x-1, 1, self.WIDTH)] == nil or particle_table[self.position.y][self.Clampf(self.position.x-1, 1, self.WIDTH)].type == 2 then
         self:FallLeft(particle_table)
-    elseif particle_table[self.position.y][Clampf(self.position.x+1, 1, WIDTH)] == nil or particle_table[self.position.y][Clampf(self.position.x+1, 1, WIDTH)].type == 2 then
+    elseif particle_table[self.position.y][self.Clampf(self.position.x+1, 1, self.WIDTH)] == nil or particle_table[self.position.y][self.Clampf(self.position.x+1, 1, self.WIDTH)].type == 2 then
         self:FallRight(particle_table)
     end
 end
@@ -124,7 +145,7 @@ function sand:Update(particle_table)
     --if self.position.y < #particle_table and self.position.x < #particle_table then
 
         -- Check the spot immediately below the particle and if its filled return early to not waste time in for loop
-        if particle_table[Clampf(self.position.y+1, 1, HEIGHT)][self.position.x] ~= nil and particle_table[Clampf(self.position.y+1, 1, HEIGHT)][self.position.x].type ~= 2 then
+        if particle_table[self.Clampf(self.position.y+1, 1, self.HEIGHT)][self.position.x] ~= nil and particle_table[self.Clampf(self.position.y+1, 1, self.HEIGHT)][self.position.x].type ~= 2 then
             self:FallToSide(particle_table)
             self.velocity = 1
             
@@ -134,105 +155,85 @@ function sand:Update(particle_table)
         -- Use gravity Component to let the particle fall
         self.position = self.grav_component:FallDown(particle_table, self.position, self)
 
+
+    -- Update the stats of the particle (Wetness and Acidic)
+    -- self:checkStats(particle_table)
 end
 
 -- Updates the stats of the sand (Wetness and Acidic)
 function sand:checkStats(particle_table)
-    -- Get the particles as a variable to reduce lookup cost
+    if self.position.y - 1 <= 0 then
+        return
+    end
+
+    -- Get the particles as variables to reduce lookup cost
     local particle_north = particle_table[self.position.y-1][self.position.x]
     local particle_south = particle_table[self.position.y+1][self.position.x]
     local particle_east = particle_table[self.position.y][self.position.x+1]
     local particle_west = particle_table[self.position.y][self.position.x-1]
 
-    if InBounds(self.position.y-1, self.position.x) and particle_north ~= nil then
-        -- Get the particle as a variable to reduce lookup cost
-        
-
-        -- Check if particle is nil
-        --if particle_north == nil then
-            -- Do nothing if the particle is nil
-        
+    if particle_north ~= nil then
         -- Check if the particle above is a water particle
         if particle_north.type == 2 then
-            self.wetness = Clampf(self.wetness+1, 0, 16)
+            self.wetness = self.Clampf(self.wetness+1, 0, 16)
         
         -- Check if the particle above is an acid particle
         elseif particle_north.type == 4 then
-            self.acidic = Clampf(self.acidic+1, 0, 16)
+            self.acidic = self.Clampf(self.acidic+1, 0, 16)
 
         -- Check if the particle to the north is a sand particle
         elseif  particle_north.type == 1 then
-            self.wetness = Clampf(particle_north.wetness - 1, 0, 100)
-            self.acidic = Clampf(particle_north.acidic - 1, 0, 100)
+            self.wetness = self.Clampf(particle_north.wetness - 1, 0, 100)
+            self.acidic = self.Clampf(particle_north.acidic - 1, 0, 100)
         end
     end
 
-    if InBounds(self.position.y+1, self.position.x) and particle_south ~= nil then
-        -- Get the particle as a variable to reduce lookup cost
-        
-
-        -- Check if particle is nil
-        --if particle_south == nil then
-            -- Do nothing if the particle is nil
-        
+    if particle_south ~= nil then
         -- Check if the particle above is a water particle
         if particle_south.type == 2 then
-            self.wetness = Clampf(self.wetness+1, 0, 16)
+            self.wetness = self.Clampf(self.wetness+1, 0, 16)
 
         -- Check if the particle above is an acid particle
         elseif particle_south.type == 4 then
-            self.acidic = Clampf(self.acidic+1, 0, 16)
+            self.acidic = self.Clampf(self.acidic+1, 0, 16)
 
         -- Check if the particle to the above is a sand particle
         elseif  particle_south.type == 1 then
-            self.wetness = math.max(Clampf(particle_south.wetness - 1, 0, 100), self.wetness)
-            self.acidic = math.max(Clampf(particle_south.acidic - 1, 0, 100), self.acidic)
+            self.wetness = self.Max(self.Clampf(particle_south.wetness - 1, 0, 100), self.wetness)
+            self.acidic = self.Max(self.Clampf(particle_south.acidic - 1, 0, 100), self.acidic)
         end
     end
 
     
-    if InBounds(self.position.y, self.position.x+1) and particle_east ~= nil then
-        
-
-        -- Check if particle is nil
-        --if particle_east == nil then
-            -- Do nothing if the particle is nil
-
+    if particle_east ~= nil then
         -- Check if the particle to the right is a water particle
         if particle_east.type == 2 then
-            self.wetness = Clampf(self.wetness+1, 0, 16)
+            self.wetness = self.Clampf(self.wetness+1, 0, 16)
         
         -- Check if the particle above is an acid particle
         elseif particle_east.type == 4 then
-            self.acidic = Clampf(self.acidic+1, 0, 16)
+            self.acidic = self.Clampf(self.acidic+1, 0, 16)
 
         -- Check if the particle to the left is a sand particle
         elseif particle_east.type == 1 then
-            self.wetness = math.max(Clampf(particle_east.wetness - 1, 0, 100), self.wetness)
-            self.acidic = math.max(Clampf(particle_east.acidic - 1, 0, 100), self.acidic)
+            self.wetness = self.Max(self.Clampf(particle_east.wetness - 1, 0, 100), self.wetness)
+            self.acidic = self.Max(self.Clampf(particle_east.acidic - 1, 0, 100), self.acidic)
         end
     end
 
-    if InBounds(self.position.y, self.position.x-1) and particle_west ~= nil then
-         -- Get the particle as a variable to reduce lookup cost
-         
-        
-         -- Check if particle is nil
-        -- if particle_west == nil then
-            -- Do nothing if the particle is nil
-
+    if particle_west ~= nil then
         -- Check if the particle to the left is a water particle
         if particle_west.type == 2 then
-            self.wetness = Clampf(self.wetness+1, 0, 16)
+            self.wetness = self.Clampf(self.wetness+1, 0, 16)
         
         -- Check if the particle above is an acid particle
         elseif particle_west.type == 4 then
-            self.acidic = Clampf(self.acidic+1, 0, 16)
+            self.acidic = self.Clampf(self.acidic+1, 0, 16)
 
         -- Check if the particle to the left is a sand particle
         elseif particle_west.type == 1 then
-            self.wetness = math.max(Clampf(particle_west.wetness - 1, 0, 100), self.wetness)
-            self.acidic = math.max(Clampf(particle_west.acidic - 1, 0, 100), self.acidic)
+            self.wetness = self.Max(self.Clampf(particle_west.wetness - 1, 0, 100), self.wetness)
+            self.acidic = self.Max(self.Clampf(particle_west.acidic - 1, 0, 100), self.acidic)
         end
     end
 end
@@ -248,8 +249,8 @@ function sand:changeColor(particle_table)
     -- Check if the wetness should go down a level
     if self.dry_counter >= self.dry_timer then
         self.dry_counter = 0
-        self.wetness = Clampf(self.wetness - 1, 0, self.wetness)
-        self.acidic = Clampf(self.acidic - 1, 0, self.acidic)
+        self.wetness = self.Clampf(self.wetness - 1, 0, self.wetness)
+        self.acidic = self.Clampf(self.acidic - 1, 0, self.acidic)
     end
     
     -- Check if enough calls have happened to allow for particle to update wetness
@@ -259,7 +260,6 @@ function sand:changeColor(particle_table)
     end
     self.wet_update_counter = 0
     
-    -- Update the stats of the particle (Wetness and Acidic)
     self:checkStats(particle_table)
     
     if self.wetness > self.acidic then
@@ -317,7 +317,7 @@ function sand:Draw(batch, particle_table)
     --batch:setColor(1, 1, 0.6862745098039216) -- #ffffaf HexCode for color
     self:changeColor(particle_table)
     batch:setColor(self.color.r, self.color.g, self.color.b, self.color.a)
-    batch:add((self.position.x-1)*SCALE, (self.position.y)*SCALE, 0, SCALE, SCALE, 0)
+    batch:add((self.position.x-1)*self.SCALE, (self.position.y)*self.SCALE, 0, self.SCALE, self.SCALE, 0)
 end
 
 return sand

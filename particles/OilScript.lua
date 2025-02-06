@@ -5,27 +5,29 @@ local DisplacementComponent = require("Components.DisplacementComponent")
 local Color = require("ColorScript")
 local DissolveComponent = require("Components.DissolveComponent")
 
-local acid = {}
+local oil = {}
 
-acid.__index = acid
-acid.name = "Acid"
+oil.__index = oil
+oil.name = "Oil"
 
-function acid.new(x, y)
-    local myClass = setmetatable({}, acid)
-
-    -- Density is 1, since it needs to fall below water but not sand
-    myClass.density = 1
+function oil.new(x, y)
+    local myClass = setmetatable({}, oil)
 
     myClass.position = Vector2.new(x, y)
     myClass.velocity = 1
-    myClass.type = 4
+    myClass.type = 7
 
-    myClass.gravity_component = GravityComponent.new(false, {2}, myClass.density)
+    -- Oil has -1 density, since it should float on water
+    myClass.density = -2
+
+    myClass.grav_component = GravityComponent.new(false, {0}, myClass.density)
+
     myClass.fluid_component = FluidComponent.new({2})
+    
     myClass.displace_component = DisplacementComponent.new()
 
     -- Default Color #03fc6b Hexcode
-    myClass.color = Color.new(0.011764705882352941, 0.9882352941176471, 0.4196078431372549, 0.85)
+    myClass.color = Color.new(0.050980392156862744, 0.050980392156862744, 0.058823529411764705, 0.9)
 
     -- Depth variable will contain which level of color the current water particle is associated with
     myClass.depth = 0
@@ -48,17 +50,17 @@ function acid.new(x, y)
     return myClass
 end
 
-function acid:getPosition()
+function oil:getPosition()
     return self.position
 end
 
 -- Displace function is called when a particle lands where this particle was and so this particle must be moved out of the way
-function acid:Displace(particle_table, position, distance)
+function oil:Displace(particle_table, position, distance)
     self.position = self.displace_component:Displace(particle_table, self.position, self, distance)
 end
 
 
-function acid:Update(particle_table)
+function oil:Update(particle_table)
 
     
 
@@ -70,7 +72,7 @@ function acid:Update(particle_table)
     -- end
     -- Checks if there is a particle beneath the current position
     if self.position.y+1 < self.HEIGHT then
-        if particle_table[self.position.y+1][self.position.x] ~= nil and particle_table[self.position.y+1][self.position.x].density >= self.density then --and particle_table[self.position.y+1][self.position.x].type ~= 2 then--particle_table[self.Clampf(self.position.y+1, 1, HEIGHT)][self.position.x] ~= nil then --and particle_table[self.Clampf(self.position.y+1, 1, WIDTH)][self.position.x].type ~= 0 then
+        if particle_table[self.position.y+1][self.position.x] ~= nil and particle_table[self.position.y+1][self.position.x].density >= self.density then--particle_table[self.Clampf(self.position.y+1, 1, HEIGHT)][self.position.x] ~= nil then --and particle_table[self.Clampf(self.position.y+1, 1, WIDTH)][self.position.x].type ~= 0 then
         
             -- Checks if there is a free space to either the right or the left of the particle
             
@@ -84,18 +86,19 @@ function acid:Update(particle_table)
         -- Checks to see if there is no particle beneath the current position
         else -- particle_table[self.Clampf(self.position.y+1, 1, WIDTH)][self.position.x] == nil then
             -- Follows gravity to fall
-            self.position = self.gravity_component:FallDown(particle_table, self.position, self)
+            self.position = self.grav_component:FallDown(particle_table, self.position, self)
         
         end
     end
+    
 
-    self.dissolve_component:Dissolve(particle_table, self.position)
+    
 
 
 end
 
 -- This will change the color of the water dependent on how much is above it
-function acid:changeColor(particle_table)
+function oil:changeColor(particle_table)
 
     if self.depthUpdateClock < self.depthUpdateTimer then
         self.depthUpdateClock = self.depthUpdateClock + 1
@@ -104,7 +107,7 @@ function acid:changeColor(particle_table)
     self.depthUpdateClock = 0
     
     
-    -- If the space above is not occupied
+    -- If the space above is not occupied or its a liquid that is less dense
     if self.position.y-1 > 0 and (particle_table[self.position.y-1][self.position.x] == nil or (particle_table[self.position.y-1][self.position.x] ~= nil and particle_table[self.position.y-1][self.position.x].density < self.density )) then
         self.depthCount = self.Clampf(self.depthCount-1, 0, 220)
     -- Check if the particle above is a water particle
@@ -114,23 +117,21 @@ function acid:changeColor(particle_table)
 
     -- Determine color based on the depthCount
     if self.depthCount <= 1 then --math.random( 1, 4 ) then
-        -- #03fc6b Hexcode for the color
-        self.color:changeColor(0.011764705882352941, 0.9882352941176471, 0.4196078431372549, self.color.a)
+        -- #292b30 Hexcode for the color
+        self.color:changeColor(0.1607843137254902, 0.16862745098039217, 0.18823529411764706, self.color.a)
     elseif self.depthCount <= 5 then --math.random( 5, 9 ) then
-        -- #00bf50 Hexcode for the color
-        self.color:changeColor(0, 0.7490196078431373, 0.3137254901960784, self.color.a)
+        -- #212226 Hexcode for the color
+        self.color:changeColor(0.12941176470588237, 0.13333333333333333, 0.14901960784313725, self.color.a)
     elseif self.depthCount <= 12 then -- math.random( 12, 18 ) then
-        -- #009c41 Hexcode for the color
-        self.color:changeColor(0, 0.611764705882353, 0.2549019607843137, self.color.a)
+        -- #1c1d21 Hexcode for the color
+        self.color:changeColor(0.10980392156862745, 0.11372549019607843, 0.12941176470588237, self.color.a)
     elseif self.depthCount <= 30 then --math.random( 30, 37 ) then
-        -- #007531 Hexcode for the color
-        self.color:changeColor(0, 0.4588235294117647, 0.19215686274509805, self.color.a)
-    elseif self.depthCount <= 80 then --math.random( 80, 87 ) then
-        -- #005c26 Hexcode for the color
-        self.color:changeColor(0, 0.4588235294117647, 0.19215686274509805, self.color.a)
-    elseif self.depthCount <= 200 then
-        -- #003d1a Hexcode for the color
-        self.color:changeColor(0, 0.23921568627450981, 0.10196078431372549, self.color.a)
+        -- #15161a Hexcode for the color
+        self.color:changeColor(0.08235294117647059, 0.08627450980392157, 0.10196078431372549, self.color.a)
+    elseif self.depthCount <= 800 then --math.random( 80, 87 ) then
+        -- #0d0d0f Hexcode for the color
+        self.color:changeColor(0.050980392156862744, 0.050980392156862744, 0.058823529411764705, self.color.a)
+    
     end
 
 end
@@ -139,11 +140,11 @@ end
 
 
 
-function acid:Draw(batch, particle_table)
+function oil:Draw(batch, particle_table)
     --batch:setColor(0, 0, 0.49411764705882355, 0.85)
     self:changeColor(particle_table)
     batch:setColor(self.color.r, self.color.g, self.color.b, self.color.a)
     batch:add((self.position.x-1)*self.SCALE, self.position.y*self.SCALE, 0, self.SCALE, self.SCALE, 0)
 end
 
-return acid
+return oil

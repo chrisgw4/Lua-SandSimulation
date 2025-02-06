@@ -14,18 +14,24 @@ local Sand = require("particles.SandScript")
 local Water = require("particles.WaterScript")
 local Stone = require("particles.StoneScript")
 local Acid = require("particles.AcidScript")
+local Wood = require("particles.WoodScript")
+local Fire = require("particles.FireScript")
+local Oil = require("particles.OilScript")
 -- End Particle Requires
 
 local clamp = require("Clamp")
 local text = require("TextScript")
 local tick = require("tick")
+local profi = require("ProFi")
+local love = love
+local cron = require("Cron.cron")
 -- #endregion End of required Class Scripts --
 
 local vec2 = vector2.new(1, 2)
 local x = 0
 local reverse = false
 
-SCALE = 6
+SCALE = 10
 WIDTH = love.graphics.getWidth()/SCALE
 HEIGHT = love.graphics.getHeight()/SCALE
 
@@ -57,7 +63,7 @@ particle_table[sand1.position.y][sand1.position.x] = sand1
 
 -- This variable keeps track of which particle is selected and what particle to spawn
 local selected_particle = Sand
-local available_particles = {Sand, Water, Stone, Acid} -- This variable keeps track of the particles that are able to be selected
+local available_particles = {Sand, Water, Stone, Acid, Wood, Fire, Oil} -- This variable keeps track of the particles that are able to be selected
 
 -- Sprite batch will hold onto the particle draw data and then draw them all at once in one call --
 local sprite_batch = love.graphics.newSpriteBatch(love.graphics.newImage("particle.png"), 1000, "dynamic")
@@ -71,7 +77,7 @@ local mouse_batch = love.graphics.newSpriteBatch(love.graphics.newImage("particl
 
 -- Caps the framerate to 60 fps
 function love.load(arg)
-  tick.framerate = 6000 -- Limit framerate to 60 frames per second.
+  tick.framerate = 60 -- Limit framerate to 60 frames per second.
 end
 
 
@@ -79,6 +85,7 @@ end
 local function preview_mouse(x, y)
 
     local radius = size/2
+    local SCALE = SCALE
 
     -- Spawns a circle of the selected particle around the cursor
     for i=-radius,radius do
@@ -106,19 +113,19 @@ end
 local deletion_queue = {}
 
 function AddToDeleteQueue(temp)
-    deletion_queue[#deletion_queue+1] = temp
+    table.insert( deletion_queue, temp )
 end
 
 
-function DeleteParticle(temp)
+local function DeleteParticle(temp)
     for x=1,#particles do
         ::continue::
-        for j=1, #temp do
+        for j=1, #deletion_queue do
             
-            if particles[x] == temp[j] then
-                particle_table[temp[j].position.y][temp[j].position.x] = nil
+            if particles[x] == deletion_queue[j] then
+                particle_table[deletion_queue[j].position.y][deletion_queue[j].position.x] = nil
                 table.remove(particles, x)
-                table.remove(temp, j)
+                table.remove(deletion_queue, j)
                 
                 goto continue
             end
@@ -127,12 +134,13 @@ function DeleteParticle(temp)
             -- table.remove(particles, x)
         -- end
     end
+    deletion_queue = {}
     
 end
 
 -- Will Check if the input y and x are InBounds in relation to the particle_table and the screen size
-function InBounds(y, x)
-    return y > 0 and y <= HEIGHT-1 and x > 0 and x <= WIDTH
+function InBounds(y, x, height, width)
+    return y > 0 and y <= height-1 and x > 0 and x <= width
 end
 
 -- #region Will delete a clump of particles at the mouse position --
@@ -147,9 +155,10 @@ local function delete_particle_mouse(x, y)
             -- Check the radius to see if particle should be deleted
             if i * i + j * j <= radius * radius then
                 -- Make sure y and x are inBounds and make sure Space is occupied. Dont call InBounds Function because it will not account for bottom most row for deletion
-                if y+i <= HEIGHT and x+j <= WIDTH and IsSpaceOccupied(y+i, x+j)  then
+                if y+i <= HEIGHT and x+j <= WIDTH+1 and IsSpaceOccupied(y+i, x+j)  then
                     local temp = particle_table[ClampHeight(y+i)][Clampf(x+j, 1, WIDTH+1)]
-                    to_be_deleted[#to_be_deleted+1] = temp
+                    -- to_be_deleted[#to_be_deleted+1] = temp
+                    deletion_queue[#deletion_queue+1] = temp
                     --particles:remove(particle_table[y+i][x+j])
 
                     -- Need to clampf for x because erasing the right side wont work without it
@@ -159,7 +168,7 @@ local function delete_particle_mouse(x, y)
         end
     end
 
-    DeleteParticle(to_be_deleted)
+    -- DeleteParticle(to_be_deleted)
 end
 -- #endregion
 
@@ -181,7 +190,7 @@ local function spawn_particle(x, y, can_spawn)
 
             if i * i + j * j <= radius * radius then
                 if not IsSpaceOccupied(y+i, x+j) then
-                    local temp = selected_particle.new(ClampWidth(x+j), ClampHeight(y+i))
+                    local temp = selected_particle.new(ClampWidth(x+j), ClampHeight(y+i), nil)
                     particle_table[ClampHeight(y+i)][ClampWidth(x+j)] = temp
 
                     particles[#particles+1] = temp
@@ -235,6 +244,14 @@ end
 -- #endregion
 
 
+local profi_started = true
+local profi_ended = true
+local profiles = 0
+local profi_started2 = true
+local profi_ended2 = true
+local profiles2 = 0
+
+
 -- Checks the event when a key on the keyboard is pressed
 function love.keypressed(key, scancode, isrepeat)
     if key == "escape" then
@@ -248,6 +265,19 @@ function love.keypressed(key, scancode, isrepeat)
         selected_particle = Stone
     elseif key == "4" then
         selected_particle = Acid
+    elseif key == "5" then
+        selected_particle = Wood
+    elseif key == "6" then
+        selected_particle = Fire
+    elseif key == "7" then
+        selected_particle = Oil
+    end
+
+    if key == "f" then
+        profi_started = false
+        profi_started2 = false
+        profi_ended2 = false
+        profi_ended = false
     end
  end
 
@@ -273,89 +303,43 @@ local function sortParticles()
     end)
 end
 
-
-
-function love.update(dt)
-	
-
-    
-
-    -- Catches the event when the mouse button 2 is pressed --
-    if love.mouse.isDown(2) then
-        -- Calls the function to delete particles at the mouse location --
-        delete_particle_mouse(ClampWidth(love.mouse.getX()/SCALE),  ClampHeight(love.mouse.getY()/SCALE))
+local function updateParticles() 
+    if not profi_started2 then
+        profi:start()
+        profi_started2 = true
     end
 
-    -- Catches the event when the mouse button 1 is pressed --
-    if love.mouse.isDown(1) then
-        -- Calls the function to spawn particles at the mouse location --
-        spawn_particle(ClampWidth(love.mouse.getX()/SCALE),  ClampHeight(love.mouse.getY()/SCALE), true)
-    end
 
-    -- If the scroll wheel is pressed down
-    if love.mouse.isDown(3) then
-        resetSize() -- Reset the spawning size back to its base value
-    end
-
-    
-    
-    -- particle_sort_clock = particle_sort_clock + 1
-    -- if particle_sort_clock >= particle_sort_timer then
-    --     particle_sort_clock = 0
-    --     -- sortParticles()
-    -- end
-    
-    local chunks = 4
-    -- Updates each particle
-    -- for x=0, chunks do
-    --     for j = (#particles/chunks)*(x+1), (#particles*x)/chunks, -1 do
-    --         particles[Clampf(j, 1, #particles)]:Update(particle_table)
-    --     end
-    -- end
-    
     for i=#particles, 1, -1 do
         particles[i]:Update(particle_table)
     end
 
-    -- for i=1, #particles do
-    --     particles[i]:Update(particle_table)
-    -- end
 
-    -- for key, temp in pairs(particles) do
-    --     temp:Update(particle_table)
-    -- end
 
-    -- print(WIDTH)
-    -- local chunks_x = 60
-    -- frame_update = frame_update + 1
-    -- --if frame_update % math.floor(love.timer.getFPS()/200) == 0 then
-    --     frame_update = 0
-    --     for i=#particle_table, 1, -1 do
-    --         for chunk=0, chunks_x do
-                
-    --             if math.random(0,2) == 0 then
-    --                 for j = (WIDTH/chunks_x)*(chunk+1), (WIDTH*chunk)/chunks_x, -1 do
-    --                     if particle_table[i][j] ~= nil then
-    --                         particle_table[i][j]:Update(particle_table)
-    --                     end
-    --                 end
-    --             else
-    --                 for j = (WIDTH*chunk)/chunks_x, (WIDTH/chunks_x)*(chunk+1) do
-    --                     if particle_table[i][j] ~= nil then
-    --                         particle_table[i][j]:Update(particle_table)
-    --                     end
-    --                 end
-    --             end
-    --         end
-    --     end
-    -- end
-    
-    
+    if not profi_ended2 then
+        profi:stop()
+        profi:writeReport("Zupdate_report".. profiles2 ..".txt")
+        profi:reset()
+        profiles2 = profiles2 + 1
+        profi_ended2 = true
+    end
+end
 
-    
 
-    --end
-    
+
+
+
+local c1 = cron.every(0.032, updateParticles)
+local c2 = cron.every(0.1, DeleteParticle)
+
+function love.update(dt)
+    c1:update(dt)    
+    c2:update(dt)
+
+    -- Delete all the particles in the deletion queue before drawing the particles
+    -- DeleteParticle(deletion_queue)
+
+
 end
 
 
@@ -366,7 +350,7 @@ end
 
 
 local orientation_changer = 2*math.pi-math.pi/4
-local text_table = {text.new(0,0), text.new(0,0), text.new(0,0), text.new(0,0)}
+local text_table = {text.new(0,0), text.new(0,0), text.new(0,0), text.new(0,0), text.new(0,0), text.new(0,0), text.new(0,0)}
 
 -- Prints the particle types and sees which one is active
 local function printParticleTypes(graphics, width)
@@ -399,8 +383,11 @@ local function printParticleTypes(graphics, width)
 end
 
 
+
 function love.draw()
     mouse_batch:clear()
+    
+    
 
     -- #region Bounces the words "Hello Word" back and forth on the x-axis --
     love.graphics.print("Hello World", x, 300)
@@ -418,53 +405,57 @@ function love.draw()
     end
     -- #endregion
 
+
     frame_draw = frame_draw + 1
     if frame_draw % math.ceil(love.timer.getFPS()/20) == 0 then
-
-
-        -- Delete all the particles in the deletion queue before drawing the particles
-        DeleteParticle(deletion_queue)
-    
-        deletion_queue = {}
+        if not profi_started then
+            profi:start()
+            profi_started = true
+        end
         
 
         -- #region Goes through all the particles that are created and updates them, and adds them to the draw call --
 
         sprite_batch:clear()
-        -- sprite_batch1:clear()
-        -- sprite_batch2:clear()
-        -- sprite_batch3:clear()
-        -- sprite_batch4:clear()
 
         -- Adds all the particles to the sprite batch to prepare for draw
         for i=1, #particles do
             particles[i]:Draw(sprite_batch, particle_table)
         end
 
-        -- local chunks = 4
-        -- -- Updates each particle
-        -- for x=0, chunks-1 do
-        --     for j = (#particles/chunks)*(x+1), (#particles*x)/chunks, -1 do
-        --         particles[Clampf(j, 1, #particles)]:Draw(sprite_batch_arr[x+1], particle_table)
-        --     end
-            
-        -- end
-        
-        
-        
 
-        -- for i=1, #particle_table do
-        --     for j=1, WIDTH do
-        --         if particle_table[i][j] ~= nil then
-        --             particle_table[i][j]:Draw(sprite_batch, particle_table)
-        --         end
-        --     end
-        -- end
-        
+        if not profi_ended then
+            profi:stop()
+            profi:writeReport("Zdraw_report".. profiles ..".txt")
+            profi:reset()
+            profiles = profiles + 1
+            profi_ended = true
+        end
+
 
         -- endregion
         frame_draw = 0
     end
+
+
+    -- Catches the event when the mouse button 2 is pressed --
+    if love.mouse.isDown(2) then
+        -- Calls the function to delete particles at the mouse location --
+        delete_particle_mouse(ClampWidth(love.mouse.getX()/SCALE),  ClampHeight(love.mouse.getY()/SCALE))
+    end
+
+    -- Catches the event when the mouse button 1 is pressed --
+    if love.mouse.isDown(1) then
+        -- Calls the function to spawn particles at the mouse location --
+        spawn_particle(ClampWidth(love.mouse.getX()/SCALE),  ClampHeight(love.mouse.getY()/SCALE), true)
+    end
+
+    -- If the scroll wheel is pressed down
+    if love.mouse.isDown(3) then
+        resetSize() -- Reset the spawning size back to its base value
+    end
+
+    
 
     -- for i=1, #sprite_batch_arr-1 do
     --     love.graphics.draw(sprite_batch_arr[i])
@@ -496,6 +487,8 @@ function love.draw()
 
     
 end
+
+
 
 
 
